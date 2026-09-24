@@ -178,7 +178,7 @@ then run it:
 cd $DROID_ROOT
 python3 scripts/main.py --remote_host=<workstation IP> --remote_port=8000 \
     --left_camera_id=<serial> --right_camera_id=<serial> --wrist_camera_id=<serial> \
-    --external_camera=left --max_timesteps=1800 --open_loop_horizon=6   # 10 for pack_toys
+    --external_camera=left --max_timesteps=1800 --open_loop_horizon=6
 ```
 
 At `Enter instruction:`, type the task's prompt from the table below, e.g.
