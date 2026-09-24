@@ -1,25 +1,8 @@
 # DATAFARM
 
-DATAFARM collects robot demonstrations on a real Franka arm with task-and-motion planning (TiPToP, cuTAMP,
-cuRobo) and uses them to fine-tune π0.5-DROID with openpi.
-
-## Repository layout
-
-```
-DATAFARM/
-├── data_collection/
-│   ├── configs/             task configs
-│   ├── collect.py           start a data-collection session
-│   ├── build_dataset.py     episodes -> LeRobot dataset
-│   └── lerobot_v3.py        dataset writer
-├── encoder/                 trajectory encoder (see encoder/README.md)
-│   └── checkpoints/         encoder.pt, used by the task configs
-├── vla/
-│   ├── configs/             openpi training configs
-│   ├── filters/             idle-frame filters
-│   └── train.sh             openpi training wrapper
-└── submodules/              tiptop, cuTAMP, curobo, M2T2, FoundationStereo, openpi
-```
+**DATAFARM** makes task and motion planning (TAMP) a useful data source for fine-tuning vision-language-action
+(VLA) models. DATAFARM uses the pretraining distribution to guide trajectory generation, aligning joint
+configurations, motion style and timing.
 
 ## Setup
 
@@ -67,7 +50,7 @@ pixi run python server.py --port 1234
 
 On the NUC, start polymetis's robot server (port 50051) and gripper server (port 50052), for example with
 DROID's `droid/franka/launch_robot.sh` and `launch_gripper.sh`. Then copy
-[`bamboo_polymetis_shim.py`](https://github.com/SamratSahoo/tiptop/blob/d193fee525b32363c68864effb2eebcebe2bc4d3/bamboo_polymetis_shim.py)
+[`bamboo_polymetis_shim.py`](https://github.com/SamratSahoo/tiptop/blob/313c5da55c7a9992a9d9b884f6e4858666c6253d/bamboo_polymetis_shim.py)
 to the NUC and run it in an environment with polymetis, pyzmq, msgpack, numpy and scipy:
 
 ```bash
@@ -88,7 +71,7 @@ export TIPTOP_EXTERNAL_CAMERA_ID=<serial> # external ZED
 ```
 
 Follow
-[`docs/getting-started.md`](https://github.com/SamratSahoo/tiptop/blob/d193fee525b32363c68864effb2eebcebe2bc4d3/docs/getting-started.md)
+[`docs/getting-started.md`](https://github.com/SamratSahoo/tiptop/blob/313c5da55c7a9992a9d9b884f6e4858666c6253d/docs/getting-started.md)
 from `submodules/tiptop`, but skip "Start the Bamboo controller server" (the shim replaces it). Set the
 workspace obstacles in `tiptop/workspace.py` and the capture pose `robot.q_capture` in
 `tiptop/config/tiptop.yml`, then:
@@ -122,7 +105,7 @@ python -m encoder.data fetch     # DROID proprio, ~4 GB streamed into encoder/da
 python -m encoder.train          # -> encoder/outputs/encoder.pt
 ```
 
-To use it, point `vae_path` in the task configs at the new checkpoint. See
+To use it, point `encoder_path` in the task configs at the new checkpoint. See
 [`encoder/README.md`](encoder/README.md) for the options.
 
 ### 2. Collect demonstrations
@@ -172,10 +155,11 @@ Then copy a config in `vla/configs/` and replace the task dataset's repo id in `
 vla/train.sh place_toys_on_plate --exp-name=my_run   # other flags go to openpi's train.py, e.g. --fsdp-devices=<n>
 ```
 
-Checkpoints go to `vla/checkpoints/<config>/<exp-name>/<step>/`; the last is step 19999. For W&B, run
-`wandb login`, set `WANDB_MODE=offline`, or pass `--no-wandb-enabled`.
+Checkpoints go to `vla/checkpoints/<config>/<exp-name>/<step>/`.
 
-### 6. Serve
+### 6. Run the VLA
+
+Start the policy server on the workstation:
 
 ```bash
 cd vla
@@ -183,16 +167,27 @@ OPENPI_CONFIG_DIR=$PWD/configs uv run --project ../submodules/openpi python ../s
     policy:checkpoint --policy.config=place_toys_on_plate --policy.dir=checkpoints/place_toys_on_plate/my_run/19999
 ```
 
-The server listens on port 8000. On the robot side, stop the shim, bring up DROID's standard NUC stack,
-and run openpi's DROID client
-([`examples/droid/README.md`](https://github.com/SamratSahoo/openpi/blob/c4b2b1bf507e1ddd894902b2771bc6b224fb1873/examples/droid/README.md),
-step 2) with the task's prompt and `--external_camera=left --max_timesteps=1800 --open_loop_horizon=6`
-(`10` for pack_toys). Start each rollout from tiptop's `robot.q_capture`, not the DROID home pose the
-client resets to.
+On the robot side, stop the shim and bring up DROID's standard NUC stack. On the DROID control laptop, set
+up openpi's DROID client as in
+[`examples/droid/README.md`](https://github.com/SamratSahoo/openpi/blob/c4b2b1bf507e1ddd894902b2771bc6b224fb1873/examples/droid/README.md)
+(step 2: install `packages/openpi-client` and copy `examples/droid/main.py` to `$DROID_ROOT/scripts/`),
+then run it:
+
+```bash
+# on the DROID laptop, in the DROID conda env
+cd $DROID_ROOT
+python3 scripts/main.py --remote_host=<workstation IP> --remote_port=8000 \
+    --left_camera_id=<serial> --right_camera_id=<serial> --wrist_camera_id=<serial> \
+    --external_camera=left --max_timesteps=1800 --open_loop_horizon=6   # 10 for pack_toys
+```
+
+At `Enter instruction:`, type the task's prompt from the table below, e.g.
+`Place the toys on the plate with no collisions`. Start each rollout from tiptop's `robot.q_capture`, not
+the DROID home pose the client resets to.
 
 ## Tasks and released artifacts
 
-| Task | Prompt | Data config | Dataset | VLA config |
+| Task | Prompt | Data config | Dataset | VLA Training Config |
 |---|---|---|---|---|
 | Place toys on plate | Place the toys on the plate with no collisions | [`place_toys_on_plate.yaml`](data_collection/configs/place_toys_on_plate.yaml) | [Link](https://huggingface.co/datasets/SamratSahoo/1_pp_toys_plate_vae_style_timing_apex_learned_posture_v2_prpl) | [`place_toys_on_plate`](vla/configs/place_toys_on_plate.yaml) |
 | Sort fruits and toys | Sort the fruits into the green bowl and toys into the blue bowl | [`sort_fruits_and_toys.yaml`](data_collection/configs/sort_fruits_and_toys.yaml) | [Link](https://huggingface.co/datasets/SamratSahoo/3_pp_sort_fruits_toys_vae_style_timing_apex_learned_posture_v2_prpl) | [`sort_fruits_and_toys`](vla/configs/sort_fruits_and_toys.yaml) |
@@ -200,21 +195,4 @@ client resets to.
 
 ## Licenses and acknowledgements
 
-Each submodule keeps its license in its own `LICENSE` file.
-
-- [TiPToP](https://github.com/tiptop-robot/tiptop): MIT.
-- [cuTAMP](https://github.com/NVlabs/cuTAMP), [cuRobo](https://github.com/NVlabs/curobo) 0.7 (via
-  [williamshen-nz/curobo](https://github.com/williamshen-nz/curobo)), [M2T2](https://github.com/NVlabs/M2T2)
-  and [FoundationStereo](https://github.com/NVlabs/FoundationStereo): NVIDIA License, non-commercial use
-  only (research or evaluation for cuTAMP, cuRobo and M2T2; research only for FoundationStereo), including
-  these forks and other derivative works.
-- Weights fetched by `build_server.sh`: M2T2's (`wentao-yuan/m2t2`) are Apache-2.0 per their model card;
-  FoundationStereo's fall under its NVIDIA License (research only).
-- [openpi](https://github.com/Physical-Intelligence/openpi): Apache-2.0. π0.5 is built on PaliGemma, so the
-  π0.5-DROID weights and checkpoints fine-tuned from them are subject to the
-  [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
-- DROID ([`lerobot/droid_1.0.1`](https://huggingface.co/datasets/lerobot/droid_1.0.1)): Apache-2.0, per its
-  dataset card.
-
-The full data-collection pipeline is therefore for non-commercial research use only. This repository's own
-code (`encoder/`, `data_collection/`, `vla/`) is released under the [MIT License](LICENSE).
+This repository is released under the [MIT License](LICENSE).

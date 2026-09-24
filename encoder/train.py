@@ -8,7 +8,7 @@ with free bits and a linear KL warm-up. Batches are sampled uniformly from a DRO
 
 Every third epoch and at the last, the same loss (eval mode, no input noise, full beta) is computed
 on up to 1200 held-out DROID episodes, and the epoch with the lowest validation loss is kept. The
-DROID latent-cluster statistics that cuRobo's VaeManifoldCost scores against (mean, precision, ...)
+DROID latent-cluster statistics that cuRobo's encoder cost scores against (mean, precision, ...)
 are then computed from trajopt-length sub-segments of ALL cached DROID episodes and baked into the
 checkpoint.
 
@@ -36,7 +36,7 @@ MAXLEN = 384            # training crops longer than this are randomly windowed 
 NOISE = 0.10            # input noise std (standardized units)
 N_VAL_DROID = 1200      # held-out DROID episodes in the validation set
 EVAL_BATCH = 256        # padding changes the strided branch slightly, so batch sizes are fixed
-# cuRobo's VaeManifoldCost encodes a trajopt segment (horizon 32 @ base_dt 0.15 s) resampled to
+# cuRobo's encoder cost scores a trajopt segment (horizon 32 @ base_dt 0.15 s) resampled to
 # 15 Hz -> ~70 steps, so the DROID cluster is calibrated on DROID sub-segments of that length.
 SEG_LEN = (50, 95)
 
@@ -263,7 +263,7 @@ def main(argv=None):
                                device=device)
     print(f"[stats] kl_droid_mean={stats['kl_droid_mean']:.2f}  maha2_droid_mean={stats['maha2_droid_mean']:.2f}")
 
-    # Checkpoint schema read by cuRobo's VaeManifoldCost: state_dict (strict), ch, latent, n_feat,
+    # Checkpoint schema read by cuRobo's encoder cost: state_dict (strict), ch, latent, n_feat,
     # n_joints, chan_mu/chan_sd and droid_latent_mean/precision. The rest is provenance.
     blob = {
         "kind": "filterbank", "state_dict": best["state"], "ch": int(best["ch"]),

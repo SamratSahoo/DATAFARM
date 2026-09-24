@@ -3,8 +3,8 @@
     python data_collection/collect.py data_collection/configs/place_toys_on_plate.yaml \
         [--output-dir DIR] [-- EXTRA_TIPTOP_RUN_ARGS ...]
 
-Writes the config's ``tamp_overrides`` to ``<output-dir>/tamp_overrides.json`` (with ``vae_path``
-made absolute) and then replaces this process with
+Writes the config's ``tamp_overrides`` to ``<output-dir>/tamp_overrides.json`` (with
+``encoder_path`` made absolute) and then replaces this process with
 
     pixi run --manifest-path submodules/tiptop/pixi.toml tiptop-run \
         --output-dir <output-dir> --enable-recording --curobo-overrides <output-dir>/tamp_overrides.json
@@ -17,9 +17,11 @@ aborts only the rollout in progress. Labelled rollouts are moved to ``<output-di
 
 Environment passed to tiptop-run: ``TIPTOP_TASK`` (the config's prompt, used as the first task),
 ``TIPTOP_CONFIG_ID`` (the config name, recorded in each episode's ``_meta.json``) and
-``VAE_MANIFOLD_CKPT`` (the resolved ``vae_path``) are set here; everything else is inherited, e.g.
-``GOOGLE_API_KEY``, ``TIPTOP_ROBOT_HOST``, the ``TIPTOP_*_CAMERA_ID`` serials and ``DC_WORKSPACE`` (which makes tiptop layer
-``calibration_info_<workspace>.json`` over its default ``calibration_info.json``).
+``VAE_MANIFOLD_CKPT`` (cuRobo's default encoder checkpoint, set to the resolved ``encoder_path``
+because cuRobo's RND novelty cost reads only that default) are set here; everything else is
+inherited, e.g. ``GOOGLE_API_KEY``, ``TIPTOP_ROBOT_HOST``, the ``TIPTOP_*_CAMERA_ID`` serials and
+``DC_WORKSPACE`` (which makes tiptop layer ``calibration_info_<workspace>.json`` over its default
+``calibration_info.json``).
 
 Needs only the standard library and PyYAML.
 """
@@ -38,6 +40,8 @@ TIPTOP_DIR = REPO_ROOT / "submodules" / "tiptop"
 RUNS_DIR = REPO_ROOT / "runs"
 OVERRIDES_FILE = "tamp_overrides.json"
 CONFIG_KEYS = ("prompt", "num_episodes", "tamp_overrides")
+# The encoder checkpoint override, under its name and under the older name tiptop also accepts.
+ENCODER_PATH_KEYS = ("encoder_path", "vae_path")
 
 
 def load_config(path: Path) -> dict:
@@ -58,21 +62,33 @@ def load_config(path: Path) -> dict:
     }
 
 
-def resolve_encoder_path(overrides: dict) -> dict:
-    """``overrides`` with ``vae_path`` made absolute; a relative path is relative to the repo root.
+def resolve_encoder_path(overrides: dict) -> tuple[dict, str | None]:
+    """``overrides`` with the encoder checkpoint path made absolute, and that path (None if unset).
 
-    tiptop resolves a relative ``vae_path`` against its own install location, which is not this
-    repository's root when tiptop is a submodule, so it is always handed an absolute path.
+    The path is ``encoder_path``, or tiptop's older name for it, which tiptop still accepts; if both
+    are given they must name the same file. A relative path is relative to the repository root:
+    tiptop would resolve it against its own install location, which is not this repository's root
+    when tiptop is a submodule, so it is always handed an absolute path.
     """
-    if overrides.get("vae_path") is None:
-        return overrides
-    path = Path(os.path.expanduser(str(overrides["vae_path"])))
-    if not path.is_absolute():
-        path = REPO_ROOT / path
-    path = Path(os.path.abspath(path))
-    if not path.is_file():
-        raise FileNotFoundError(f"vae_path {overrides['vae_path']!r} resolves to {path}, which does not exist")
-    return {**overrides, "vae_path": str(path)}
+    given = {key: overrides[key] for key in ENCODER_PATH_KEYS if key in overrides}
+    resolved = {}
+    for key, value in given.items():
+        if value is not None:
+            path = Path(os.path.expanduser(str(value)))
+            if not path.is_absolute():
+                path = REPO_ROOT / path
+            value = os.path.abspath(path)
+        resolved[key] = value
+    # Compared like tiptop compares them, so a null one counts too.
+    if len(set(resolved.values())) > 1:
+        named = " and ".join(f"{key} {value!r}" for key, value in given.items())
+        raise ValueError(f"{named} name different checkpoints; give only encoder_path")
+    key, path = next(iter(resolved.items()), (None, None))
+    if path is None:
+        return overrides, None
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"{key} {given[key]!r} resolves to {path}, which does not exist")
+    return {**overrides, **resolved}, path
 
 
 def count_collected(output_dir: Path) -> int:
@@ -107,7 +123,7 @@ def main(argv: list[str] | None = None) -> None:
     name = args.config.stem
     try:
         config = load_config(args.config)
-        overrides = resolve_encoder_path(config["tamp_overrides"])
+        overrides, encoder_path = resolve_encoder_path(config["tamp_overrides"])
     except (OSError, ValueError, yaml.YAMLError) as exc:
         sys.exit(f"error: {exc}")
     if not (TIPTOP_DIR / "pixi.toml").is_file():
@@ -128,8 +144,9 @@ def main(argv: list[str] | None = None) -> None:
     env = dict(os.environ)
     env["TIPTOP_TASK"] = config["prompt"]
     env["TIPTOP_CONFIG_ID"] = name
-    if overrides.get("vae_path") is not None:
-        env["VAE_MANIFOLD_CKPT"] = overrides["vae_path"]
+    if encoder_path is not None:
+        # cuRobo's own default-checkpoint variable, the only path its RND novelty cost reads.
+        env["VAE_MANIFOLD_CKPT"] = encoder_path
 
     collected, target = count_collected(output_dir), config["num_episodes"]
     print(f"{name}: {collected}/{target} episodes collected in {output_dir}")

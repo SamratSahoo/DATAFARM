@@ -1,7 +1,7 @@
 # Trajectory encoder
 
 The trajectory encoder is a small network that maps a 7-DOF Franka joint trajectory of any length to
-a 16-D *style* latent. During data collection, cuRobo's `VaeManifoldCost` encodes each
+a 16-D *style* latent. During data collection, cuRobo's encoder cost embeds each
 trajectory-optimization segment and penalizes the squared Mahalanobis distance of its latent to the
 DROID latent cluster, which pulls planned motion toward the timing and style of human teleoperation.
 
@@ -65,8 +65,8 @@ flags. The log prints the training and validation loss at every evaluated epoch,
 
 ## Checkpoint contract
 
-A checkpoint is a `torch.save` dict. cuRobo's `load_vae_manifold`
-(`submodules/curobo/src/curobo/rollout/cost/vae_manifold_cost.py`) loads it with
+A checkpoint is a `torch.save` dict. cuRobo's encoder cost (in
+`submodules/curobo/src/curobo/rollout/cost/`) loads it with
 `torch.load(..., map_location="cpu", weights_only=False)` and then `load_state_dict(strict=True)`
 into its own copy of the model class.
 
@@ -91,8 +91,8 @@ cuRobo keeps its own copy of the model class and of the 15 Hz `[q|v|a|j]` prepro
 must load the `state_dict` strictly.
 
 `encoder/checkpoints/encoder.pt` is the checkpoint the data-collection configs use: they turn the
-cost on with `vae_manifold_weight` and point both the cost and the stroke re-timing (`blend_mode:
-vae`) at it with `vae_path: encoder/checkpoints/encoder.pt`, relative to the repository root. To use
-a newly trained checkpoint, point `vae_path` at it and re-tune `vae_manifold_weight`: the cost is
-that weight times the squared Mahalanobis distance, whose size on planned motion differs between
-checkpoints.
+cost on with `encoder_weight` and point both the cost and the stroke re-timing
+(`blend_mode: encoder`) at it with `encoder_path: encoder/checkpoints/encoder.pt`, relative to the
+repository root. To use a newly trained checkpoint, point `encoder_path` at it and re-tune
+`encoder_weight`: the cost is that weight times the squared Mahalanobis distance, whose size on
+planned motion differs between checkpoints.

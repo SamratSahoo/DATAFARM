@@ -5,8 +5,8 @@ learned spectral representation) plus a strided temporal branch -> masked global
 (so any length works) -> a Gaussian latent (mean, log-variance), with an auxiliary head that
 regresses the style fingerprint.
 
-The module and attribute names fix the state_dict keys. cuRobo's VaeManifoldCost re-implements
-this class and loads checkpoints with strict=True, so do not rename or reorder layers.
+The module and attribute names fix the state_dict keys. cuRobo's encoder cost re-implements this
+class and loads checkpoints with strict=True, so do not rename or reorder layers.
 """
 from __future__ import annotations
 
