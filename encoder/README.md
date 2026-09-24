@@ -92,7 +92,7 @@ must load the `state_dict` strictly.
 
 `encoder/checkpoints/encoder.pt` is the checkpoint the data-collection configs use: they turn the
 cost on with `encoder_weight` and point both the cost and the stroke re-timing
-(`blend_mode: encoder`) at it with `encoder_path: encoder/checkpoints/encoder.pt`, relative to the
-repository root. To use a newly trained checkpoint, point `encoder_path` at it and re-tune
-`encoder_weight`: the cost is that weight times the squared Mahalanobis distance, whose size on
-planned motion differs between checkpoints.
+(`retime_trajectory: true`, `retime_mode: encoder`) at it with
+`encoder_path: encoder/checkpoints/encoder.pt`, relative to the repository root. To use a newly
+trained checkpoint, point `encoder_path` at it and re-tune `encoder_weight`: the cost is that weight
+times the squared Mahalanobis distance, whose size on planned motion differs between checkpoints.

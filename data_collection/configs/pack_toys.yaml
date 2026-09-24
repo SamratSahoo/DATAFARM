@@ -23,8 +23,8 @@ tamp_overrides:
   # DROID-style motion: trajectory-encoder cost, then re-timing of each stroke by the encoder.
   encoder_weight: 25000
   encoder_path: "encoder/checkpoints/encoder.pt"  # relative to the repository root
-  blend_trajectory: true
-  blend_mode: encoder
-  blend_smoothing: 3.0e-4
-  blend_boundary_speed: 0.07
+  retime_trajectory: true
+  retime_mode: encoder
+  retime_smoothing: 3.0e-4
+  retime_boundary_speed: 0.07
   time_dilation_factor_literal: 1.0

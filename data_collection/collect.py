@@ -40,8 +40,6 @@ TIPTOP_DIR = REPO_ROOT / "submodules" / "tiptop"
 RUNS_DIR = REPO_ROOT / "runs"
 OVERRIDES_FILE = "tamp_overrides.json"
 CONFIG_KEYS = ("prompt", "num_episodes", "tamp_overrides")
-# The encoder checkpoint override, under its name and under the older name tiptop also accepts.
-ENCODER_PATH_KEYS = ("encoder_path", "vae_path")
 
 
 def load_config(path: Path) -> dict:
@@ -63,32 +61,22 @@ def load_config(path: Path) -> dict:
 
 
 def resolve_encoder_path(overrides: dict) -> tuple[dict, str | None]:
-    """``overrides`` with the encoder checkpoint path made absolute, and that path (None if unset).
+    """``overrides`` with ``encoder_path`` made absolute, and that path (None if unset).
 
-    The path is ``encoder_path``, or tiptop's older name for it, which tiptop still accepts; if both
-    are given they must name the same file. A relative path is relative to the repository root:
-    tiptop would resolve it against its own install location, which is not this repository's root
-    when tiptop is a submodule, so it is always handed an absolute path.
+    A relative path is relative to the repository root: tiptop would resolve it against its own
+    install location, which is not this repository's root when tiptop is a submodule, so it is always
+    handed an absolute path.
     """
-    given = {key: overrides[key] for key in ENCODER_PATH_KEYS if key in overrides}
-    resolved = {}
-    for key, value in given.items():
-        if value is not None:
-            path = Path(os.path.expanduser(str(value)))
-            if not path.is_absolute():
-                path = REPO_ROOT / path
-            value = os.path.abspath(path)
-        resolved[key] = value
-    # Compared like tiptop compares them, so a null one counts too.
-    if len(set(resolved.values())) > 1:
-        named = " and ".join(f"{key} {value!r}" for key, value in given.items())
-        raise ValueError(f"{named} name different checkpoints; give only encoder_path")
-    key, path = next(iter(resolved.items()), (None, None))
-    if path is None:
+    value = overrides.get("encoder_path")
+    if value is None:
         return overrides, None
+    path = Path(os.path.expanduser(str(value)))
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    path = os.path.abspath(path)
     if not os.path.isfile(path):
-        raise FileNotFoundError(f"{key} {given[key]!r} resolves to {path}, which does not exist")
-    return {**overrides, **resolved}, path
+        raise FileNotFoundError(f"encoder_path {value!r} resolves to {path}, which does not exist")
+    return {**overrides, "encoder_path": path}, path
 
 
 def count_collected(output_dir: Path) -> int:
