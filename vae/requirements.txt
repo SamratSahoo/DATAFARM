@@ -1,0 +1,7 @@
+# Filterbank VAE training (python -m vae.train) and the DROID fetch (python -m vae.data fetch).
+torch
+numpy
+scipy
+# DROID fetch only: column-projected parquet reads from the HF Hub
+pyarrow
+huggingface_hub

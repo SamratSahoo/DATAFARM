@@ -1,0 +1,31 @@
+# Pack toys.
+# Dataset: SamratSahoo/4_pack_toys_vae_style_timing_apex_learned_posture_v2_prpl (20 episodes).
+# Fine-tunes pi0.5-DROID, co-training 50/50 with DROID (lerobot/droid_1.0.1). Both datasets are streamed
+# from the Hub with idle frames filtered out; filter paths are relative to vla/ (see train.sh).
+model:
+  type: pi0
+  pi05: true
+  action_horizon: 16
+weight_loader:
+  type: checkpoint
+  params_path: gs://openpi-assets/checkpoints/pi05_droid/params
+data:
+  type: lerobot_droid
+  repo_id:
+    - lerobot/droid_1.0.1
+    - SamratSahoo/4_pack_toys_vae_style_timing_apex_learned_posture_v2_prpl
+  assets:
+    assets_dir: gs://openpi-assets/checkpoints/pi05_droid/assets
+    asset_id: droid
+  base_config:
+    prompt_from_task: true
+  streaming: true
+  nonidle_filter_paths:
+    lerobot/droid_1.0.1: filters/droid.json
+    SamratSahoo/4_pack_toys_vae_style_timing_apex_learned_posture_v2_prpl: filters/pack_toys.json
+  sampling_weights:
+    lerobot/droid_1.0.1: 0.5
+    SamratSahoo/4_pack_toys_vae_style_timing_apex_learned_posture_v2_prpl: 0.5
+batch_size: 256
+num_train_steps: 20000
+save_interval: 10000

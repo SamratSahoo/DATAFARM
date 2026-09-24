@@ -1,0 +1,24 @@
+[submodule "submodules/tiptop"]
+	path = submodules/tiptop
+	url = https://github.com/SamratSahoo/tiptop.git
+	branch = DATAFARM
+[submodule "submodules/cuTAMP"]
+	path = submodules/cuTAMP
+	url = https://github.com/SamratSahoo/cuTAMP.git
+	branch = main
+[submodule "submodules/curobo"]
+	path = submodules/curobo
+	url = https://github.com/SamratSahoo/curobo.git
+	branch = main
+[submodule "submodules/openpi"]
+	path = submodules/openpi
+	url = https://github.com/SamratSahoo/openpi.git
+	branch = main
+[submodule "submodules/M2T2"]
+	path = submodules/M2T2
+	url = https://github.com/SamratSahoo/M2T2.git
+	branch = master
+[submodule "submodules/FoundationStereo"]
+	path = submodules/FoundationStereo
+	url = https://github.com/SamratSahoo/FoundationStereo.git
+	branch = master

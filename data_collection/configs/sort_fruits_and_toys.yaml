@@ -1,0 +1,27 @@
+prompt: "Sort the fruits into the green bowl and toys into the blue bowl"
+num_episodes: 20
+
+# Passed to tiptop-run as --curobo-overrides. Keys left out keep tiptop's defaults.
+tamp_overrides:
+  # Perception: more (and lower-confidence) M2T2 grasp candidates per object.
+  grasp_threshold: 0.02
+  m2t2_num_runs: 60
+  voxel_downsample_size: 0.005
+
+  # Planner (cuTAMP).
+  num_particles: 512
+  opt_steps_per_skeleton: 600
+  traj_length_norm: "inf"
+  grasp_center_weight: 30
+  require_m2t2_grasps: true  # fail planning instead of guessing grasps for an object M2T2 missed
+  transit_apex_height: 0.075
+  posture_selection_seeds: 12
+
+  # DROID-style motion: VAE motion-manifold cost, then VAE re-timing of each stroke.
+  vae_manifold_weight: 25000
+  vae_path: "vae/checkpoints/vae.pt"  # relative to the repository root
+  blend_trajectory: true
+  blend_mode: vae
+  blend_smoothing: 3.0e-4
+  blend_boundary_speed: 0.07
+  time_dilation_factor_literal: 1.0
