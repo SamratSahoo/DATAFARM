@@ -1,7 +1,7 @@
-"""Train the FilterbankVAE on full DROID -> one checkpoint.
+"""Train the trajectory encoder on full DROID -> one checkpoint.
 
 Training is self-supervised and uses only DROID trajectories. The encoder sees only the raw
-[q|v|a|j] trajectory and is trained as a beta-VAE: (a) a feature-weighted MSE regression of each
+[q|v|a|j] trajectory and is trained with (a) a feature-weighted MSE regression of each
 crop's 113-D style fingerprint (band/spectral targets up-weighted) plus (b) a beta-weighted KL term
 with free bits and a linear KL warm-up. Batches are sampled uniformly from a DROID subsample
 (--max-droid) and random crops of its episodes.
@@ -12,7 +12,7 @@ DROID latent-cluster statistics that cuRobo's VaeManifoldCost scores against (me
 are then computed from trajopt-length sub-segments of ALL cached DROID episodes and baked into the
 checkpoint.
 
-    python -m vae.train [--cache-dir DIR] [--out vae/outputs/vae.pt]
+    python -m encoder.train [--cache-dir DIR] [--out encoder/outputs/encoder.pt]
 """
 from __future__ import annotations
 
@@ -28,9 +28,9 @@ import torch.nn as nn
 from .data import DEFAULT_CACHE_DIR, cache_ready, load_droid_full
 from .features import (COMMON_RATE, N_JOINTS, crop_variants, feature_weights, fingerprint, fp_rows,
                        metric_series, pad_mask)
-from .model import FilterbankVAE, beta_at, kl_freebits
+from .model import TrajectoryEncoder, beta_at, kl_freebits
 
-DEFAULT_OUT = Path(__file__).resolve().parent / "outputs" / "vae.pt"
+DEFAULT_OUT = Path(__file__).resolve().parent / "outputs" / "encoder.pt"
 
 MAXLEN = 384            # training crops longer than this are randomly windowed to it (frames @15 Hz)
 NOISE = 0.10            # input noise std (standardized units)
@@ -97,7 +97,7 @@ def train_encoder(droid_tr, val_droid, names, *, d, beta_max, batch, dropout, n_
     ch, n_feat = tr_s[0].shape[1], len(names)
 
     torch.manual_seed(seed)
-    model = FilterbankVAE(ch, d, n_feat, p=dropout).to(device)
+    model = TrajectoryEncoder(ch, d, n_feat, p=dropout).to(device)
     opt = torch.optim.Adam(model.parameters(), lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
     rng = np.random.default_rng(seed)
@@ -133,7 +133,7 @@ def droid_latent_stats(state, ch, d, n_feat, cmu, csd, droid, *, seed, max_segme
 
     With at least ``max_segments`` episodes, a uniform subset of that many episodes contributes one
     segment each; otherwise every episode contributes ``max_segments // len(droid)`` segments."""
-    model = FilterbankVAE(ch, d, n_feat).to(device)
+    model = TrajectoryEncoder(ch, d, n_feat).to(device)
     model.load_state_dict(state)
     model.eval()
     rng = np.random.default_rng(seed)
@@ -181,11 +181,11 @@ def pos_int(text: str) -> int:
 
 
 def parse_args(argv=None):
-    ap = argparse.ArgumentParser(prog="python -m vae.train", description=__doc__.split("\n\n")[0],
+    ap = argparse.ArgumentParser(prog="python -m encoder.train", description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     io = ap.add_argument_group("data / output")
     io.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR,
-                    help="DROID cache root written by `python -m vae.data fetch`")
+                    help="DROID cache root written by `python -m encoder.data fetch`")
     io.add_argument("--out", type=Path, default=DEFAULT_OUT,
                     help="checkpoint path; a <stem>_report.json summary is written next to it")
     tr = ap.add_argument_group("training")
@@ -226,11 +226,11 @@ def main(argv=None):
     d, beta, dropout = args.latent_dim, args.beta, args.dropout
     print(f"[device] {device} | torch {torch.__version__} | max_droid={max_droid}")
     if not cache_ready(args.cache_dir):
-        raise SystemExit(f"full-DROID cache missing under {args.cache_dir} -- run: python -m vae.data fetch")
+        raise SystemExit(f"full-DROID cache missing under {args.cache_dir} -- run: python -m encoder.data fetch")
 
     droid_all = load_droid_full(args.cache_dir)                       # all episodes (cluster stats)
     if not droid_all:
-        raise SystemExit(f"no usable DROID episodes in {args.cache_dir} -- re-run: python -m vae.data fetch")
+        raise SystemExit(f"no usable DROID episodes in {args.cache_dir} -- re-run: python -m encoder.data fetch")
     rng = np.random.default_rng(seed)
     if max_droid < len(droid_all):
         tr_idx = sorted(rng.choice(len(droid_all), size=max_droid, replace=False).tolist())

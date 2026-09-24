@@ -1,4 +1,4 @@
-"""Training data for the VAE: full-DROID proprio (fetch + load).
+"""Training data for the trajectory encoder: full-DROID proprio (fetch + load).
 
 DROID. `lerobot/droid_1.0.1` is a lerobot codebase-v3.0 dataset: many episodes are packed per
 parquet file (split by `episode_index`), columns are dotted (`observation.state.joint_position`,
@@ -13,7 +13,7 @@ splits rows by episode, and writes a resumable per-file shard
 finished shards, so a 429 (HF limit: 1000 requests / 5 min) or an interruption costs at most one
 file. No HF token is needed.
 
-    python -m vae.data fetch [--max-files N] [--overwrite] [--cache-dir DIR]
+    python -m encoder.data fetch [--max-files N] [--overwrite] [--cache-dir DIR]
 """
 from __future__ import annotations
 
@@ -181,7 +181,7 @@ def load_droid_full(cache_dir=DEFAULT_CACHE_DIR) -> list[Traj]:
     Shards that fail to load (e.g. one still being written by a concurrent fetch) are skipped."""
     shards = _shard_paths(cache_dir)
     if not shards:
-        raise FileNotFoundError(f"{droid_dir(cache_dir)} has no shards -- run: python -m vae.data fetch")
+        raise FileNotFoundError(f"{droid_dir(cache_dir)} has no shards -- run: python -m encoder.data fetch")
     out, dropped = [], 0
     for sp in shards:
         try:
@@ -209,7 +209,7 @@ def load_droid_full(cache_dir=DEFAULT_CACHE_DIR) -> list[Traj]:
 # CLI                                                                         #
 # --------------------------------------------------------------------------- #
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="python -m vae.data", description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(prog="python -m encoder.data", description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     f = sub.add_parser("fetch", help="stream full-DROID proprio into resumable shards")
     f.add_argument("--max-files", type=int, default=None,

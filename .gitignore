@@ -1,9 +1,9 @@
 # Data-collection runs (data_collection/collect.py writes runs/<config>/ by default)
 /runs/
 
-# VAE: DROID cache (python -m vae.data fetch) and training outputs (python -m vae.train)
-/vae/data_cache/
-/vae/outputs/
+# Trajectory encoder: DROID cache (python -m encoder.data fetch) and training outputs (python -m encoder.train)
+/encoder/data_cache/
+/encoder/outputs/
 
 # openpi training and serving (vla/train.sh runs from vla/)
 /vla/checkpoints/

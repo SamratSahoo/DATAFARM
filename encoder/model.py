@@ -1,8 +1,9 @@
-"""FilterbankVAE: raw [q|v|a|j] trajectory in, one stylistic latent out.
+"""TrajectoryEncoder: raw [q|v|a|j] trajectory in, one style latent out.
 
 A learnable filterbank (parallel stride-1 dilated convs whose per-band |.|-energy pooling forms a
 learned spectral representation) plus a strided temporal branch -> masked global pooling over time
-(so any length works) -> VAE latent, with an auxiliary head that regresses the style fingerprint.
+(so any length works) -> a Gaussian latent (mean, log-variance), with an auxiliary head that
+regresses the style fingerprint.
 
 The module and attribute names fix the state_dict keys. cuRobo's VaeManifoldCost re-implements
 this class and loads checkpoints with strict=True, so do not rename or reorder layers.
@@ -26,7 +27,7 @@ def masked_stats(x, m):                                    # masked mean | std |
     return torch.cat([mean, std, (x + (1 - m) * -1e9).amax(-1)], 1)
 
 
-class FilterbankVAE(nn.Module):
+class TrajectoryEncoder(nn.Module):
     def __init__(self, ch, d, n_target, emb=96, p=0.2):
         super().__init__()
         specs = [(3, 1), (7, 1), (15, 1), (7, 2), (15, 4), (15, 8)]

@@ -1,4 +1,4 @@
-# Filterbank VAE training (python -m vae.train) and the DROID fetch (python -m vae.data fetch).
+# Trajectory encoder training (python -m encoder.train) and the DROID fetch (python -m encoder.data fetch).
 torch
 numpy
 scipy

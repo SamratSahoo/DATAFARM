@@ -17,9 +17,9 @@ tamp_overrides:
   transit_apex_height: 0.075
   posture_selection_seeds: 12
 
-  # DROID-style motion: VAE motion-manifold cost, then VAE re-timing of each stroke.
+  # DROID-style motion: trajectory-encoder cost, then re-timing of each stroke by the encoder.
   vae_manifold_weight: 25000
-  vae_path: "vae/checkpoints/vae.pt"  # relative to the repository root
+  vae_path: "encoder/checkpoints/encoder.pt"  # relative to the repository root
   blend_trajectory: true
   blend_mode: vae
   blend_smoothing: 3.0e-4

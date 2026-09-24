@@ -58,7 +58,7 @@ def load_config(path: Path) -> dict:
     }
 
 
-def resolve_vae_path(overrides: dict) -> dict:
+def resolve_encoder_path(overrides: dict) -> dict:
     """``overrides`` with ``vae_path`` made absolute; a relative path is relative to the repo root.
 
     tiptop resolves a relative ``vae_path`` against its own install location, which is not this
@@ -107,7 +107,7 @@ def main(argv: list[str] | None = None) -> None:
     name = args.config.stem
     try:
         config = load_config(args.config)
-        overrides = resolve_vae_path(config["tamp_overrides"])
+        overrides = resolve_encoder_path(config["tamp_overrides"])
     except (OSError, ValueError, yaml.YAMLError) as exc:
         sys.exit(f"error: {exc}")
     if not (TIPTOP_DIR / "pixi.toml").is_file():

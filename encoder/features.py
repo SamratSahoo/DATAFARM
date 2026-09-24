@@ -63,7 +63,7 @@ def resample(joint: np.ndarray, t_orig: np.ndarray, target_rate=COMMON_RATE):
 
 
 # --------------------------------------------------------------------------- #
-# Style fingerprint (the VAE's auxiliary training target)                     #
+# Style fingerprint (the encoder's auxiliary training target)                 #
 # --------------------------------------------------------------------------- #
 def sparc(speed: np.ndarray, fs: float, fc: float = 10.0, amp_th: float = 0.05, padlevel: int = 4) -> float:
     """Spectral Arc Length smoothness of a speed profile (Balasubramanian 2015).
