@@ -132,13 +132,8 @@ calibration.
 
 ### Where the extrinsics live
 
-tiptop reads extrinsics from JSON files in `submodules/tiptop/tiptop/config/assets/`, keyed by camera
-serial (`TIPTOP_HAND_CAMERA_ID` for the wrist camera):
-
-- `calibration_info.json` holds the defaults.
-- `calibration_info_<workspace>.json` is layered on top when `DC_WORKSPACE=<workspace>` is set (for
-  example `calibration_info_prpl.json` for the lab rig). `collect.py` passes `DC_WORKSPACE` through to
-  tiptop.
+tiptop reads extrinsics from `submodules/tiptop/tiptop/config/assets/calibration_info.json`, keyed by
+camera serial (`TIPTOP_HAND_CAMERA_ID` for the wrist camera).
 
 The wrist camera's entry is `ee_from_cam`, the pose of the left ZED lens relative to the end effector, as
 `[x, y, z, roll, pitch, yaw]` in meters and radians (scipy `"xyz"` Euler angles):
@@ -166,14 +161,13 @@ server and the shim) running:
 
    ```bash
    cd submodules/tiptop
-   TIPTOP_CALIB_VIZ=1 DC_WORKSPACE=prpl pixi run calibrate-wrist-cam
+   TIPTOP_CALIB_VIZ=1 pixi run calibrate-wrist-cam
    ```
 
    With `TIPTOP_CALIB_VIZ=1` it shows the camera feed and waits for `y` before moving. Without it, it runs
    headless and starts moving the arm 3 seconds after launch. The arm sweeps around its current pose for
-   2–3 minutes, then the script writes the entry. It writes to the workspace file when `DC_WORKSPACE` is
-   set, otherwise to `calibration_info.json`. If the fit isn't accurate enough, it raises an error and
-   writes nothing.
+   2–3 minutes, then the script writes the entry to `calibration_info.json`. If the fit isn't accurate
+   enough, it raises an error and writes nothing.
 4. Check the result:
 
    ```bash
@@ -183,7 +177,7 @@ server and the shim) running:
    The point cloud should line up with the robot model and the table in Rerun.
 
 Recalibrate whenever the wrist camera is bumped, remounted or swapped. A new unit has a new serial, so it
-needs its own entry. The calibration files are part of the tiptop submodule, so commit changes there and
+needs its own entry. The calibration file is part of the tiptop submodule, so commit changes there and
 then update the submodule pointer in this repository.
 
 ## Pipeline

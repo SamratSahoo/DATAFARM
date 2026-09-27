@@ -19,9 +19,7 @@ Environment passed to tiptop-run: ``TIPTOP_TASK`` (the config's prompt, used as 
 ``TIPTOP_CONFIG_ID`` (the config name, recorded in each episode's ``_meta.json``) and
 ``VAE_MANIFOLD_CKPT`` (cuRobo's default encoder checkpoint, set to the resolved ``encoder_path``
 because cuRobo's RND novelty cost reads only that default) are set here; everything else is
-inherited, e.g. ``GOOGLE_API_KEY``, ``TIPTOP_ROBOT_HOST``, the ``TIPTOP_*_CAMERA_ID`` serials and
-``DC_WORKSPACE`` (which makes tiptop layer ``calibration_info_<workspace>.json`` over its default
-``calibration_info.json``).
+inherited, e.g. ``GOOGLE_API_KEY``, ``TIPTOP_ROBOT_HOST`` and the ``TIPTOP_*_CAMERA_ID`` serials.
 
 Needs only the standard library and PyYAML.
 """
