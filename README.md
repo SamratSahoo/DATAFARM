@@ -40,6 +40,12 @@ TORCH_CUDA_ARCH_LIST=8.9 bash build_server.sh   # set your GPU's compute capabil
 pixi run python server.py --port 8123
 ```
 
+FoundationStereo needs pretrained weights. Download the `23-51-11` folder from
+[Google Drive](https://drive.google.com/drive/folders/1VhPebc_mMxWKccrv7pdQLTvXYVcLYpsf) and put the whole folder
+in `submodules/FoundationStereo/pretrained_models/`, so that
+`pretrained_models/23-51-11/model_best_bp2.pth` and `cfg.yaml` are both there. The server loads that path by default.
+Without the weights it starts in "unconfigured" mode.
+
 ```bash
 cd submodules/FoundationStereo
 bash build_server.sh
