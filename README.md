@@ -52,15 +52,15 @@ The NUC runs two programs: DROID's server, which starts polymetis for the arm an
 shim, which tiptop uses to control the arm. Run steps 1–4 on the NUC.
 
 **1. Install DROID.** Follow DROID's NUC guide
-([Docker](submodules/droid/docs/software-setup/docker.md) or
-[host](submodules/droid/docs/software-setup/host-installation.md)) using the fork:
+([Docker](https://github.com/SamratSahoo/droid/blob/053e5b328e5550e49387798a0147ecdbde9e5f75/docs/software-setup/docker.md) or
+[host](https://github.com/SamratSahoo/droid/blob/053e5b328e5550e49387798a0147ecdbde9e5f75/docs/software-setup/host-installation.md)) using the fork:
 
 ```bash
 git clone --recurse-submodules https://github.com/SamratSahoo/droid.git
 ```
 
 The guide's "Configure Parameters" step sets `robot_ip` (the arm's control box) and `sudo_password` in
-[`droid/misc/parameters.py`](submodules/droid/droid/misc/parameters.py). The server needs both.
+[`droid/misc/parameters.py`](https://github.com/SamratSahoo/droid/blob/053e5b328e5550e49387798a0147ecdbde9e5f75/droid/misc/parameters.py). The server needs both.
 
 **2. Add tiptop's shim.** In the DROID checkout, with DROID's polymetis environment active:
 
