@@ -22,3 +22,7 @@
 	path = submodules/FoundationStereo
 	url = https://github.com/SamratSahoo/FoundationStereo.git
 	branch = master
+[submodule "submodules/droid"]
+	path = submodules/droid
+	url = https://github.com/SamratSahoo/droid.git
+	branch = main

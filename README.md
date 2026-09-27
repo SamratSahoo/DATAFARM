@@ -48,18 +48,47 @@ pixi run python server.py --port 1234
 
 ### 4. Robot
 
-On the NUC, start polymetis's robot server (port 50051) and gripper server (port 50052), for example with
-DROID's `droid/franka/launch_robot.sh` and `launch_gripper.sh`. Then copy
-[`bamboo_polymetis_shim.py`](https://github.com/SamratSahoo/tiptop/blob/313c5da55c7a9992a9d9b884f6e4858666c6253d/bamboo_polymetis_shim.py)
-to the NUC and run it in an environment with polymetis, pyzmq, msgpack, numpy and scipy:
+The NUC runs two programs: DROID's server, which starts polymetis for the arm and gripper, and tiptop's
+shim, which tiptop uses to control the arm. Run steps 1–4 on the NUC.
+
+**1. Install DROID.** Follow DROID's NUC guide
+([Docker](submodules/droid/docs/software-setup/docker.md) or
+[host](submodules/droid/docs/software-setup/host-installation.md)) using the fork:
 
 ```bash
-# on the NUC
+git clone --recurse-submodules https://github.com/SamratSahoo/droid.git
+```
+
+The guide's "Configure Parameters" step sets `robot_ip` (the arm's control box) and `sudo_password` in
+[`droid/misc/parameters.py`](submodules/droid/droid/misc/parameters.py). The server needs both.
+
+**2. Add tiptop's shim.** In the DROID checkout, with DROID's polymetis environment active:
+
+```bash
+curl -LO https://raw.githubusercontent.com/SamratSahoo/tiptop/1d3dedf2e9880decb98b9d4669e050f4525c4157/bamboo_polymetis_shim.py
+pip install pyzmq msgpack
+```
+
+**3. Start DROID's server.** In one terminal:
+
+```bash
+python scripts/server/run_server.py
+```
+
+This starts polymetis's robot server (port 50051) and gripper server (port 50052), replacing any that are
+already running.
+
+**4. Start the shim.** In a second terminal:
+
+```bash
 python bamboo_polymetis_shim.py
 ```
 
-Check that its log shows `PolymetisGripper connected to localhost:50052`. Keep the shim running during
-calibration and collection.
+Its log should show `PolymetisGripper connected to localhost:50052`. It listens on ports 5555 (control),
+5557 (state) and 5559 (gripper).
+
+Keep both terminals running during calibration and collection. Repeat steps 3 and 4 after the NUC
+restarts.
 
 ### 5. Configure and calibrate tiptop
 
@@ -83,6 +112,8 @@ pixi run compute-gripper-mask   # or: pixi run paint-gripper-mask
 pixi run viz-calibration
 ```
 
+See [Camera calibration](#camera-calibration) for where the wrist camera's extrinsics are stored and how\n`calibrate-wrist-cam` sets them.
+
 ### 6. openpi environment
 
 ```bash
@@ -92,6 +123,68 @@ GIT_LFS_SKIP_SMUDGE=1 uv sync
 
 If `gsutil` is on `PATH` with an expired login, take it off `PATH` so openpi fetches `gs://openpi-assets`
 anonymously.
+
+## Camera calibration
+
+DATAFARM perceives the scene through the wrist camera, so its extrinsics are the only ones you need to
+set. The external camera is recorded for the dataset but never used for planning, so it needs no
+calibration.
+
+### Where the extrinsics live
+
+tiptop reads extrinsics from JSON files in `submodules/tiptop/tiptop/config/assets/`, keyed by camera
+serial (`TIPTOP_HAND_CAMERA_ID` for the wrist camera):
+
+- `calibration_info.json` holds the defaults.
+- `calibration_info_<workspace>.json` is layered on top when `DC_WORKSPACE=<workspace>` is set (for
+  example `calibration_info_prpl.json` for the lab rig). `collect.py` passes `DC_WORKSPACE` through to
+  tiptop.
+
+The wrist camera's entry is `ee_from_cam`, the pose of the left ZED lens relative to the end effector, as
+`[x, y, z, roll, pitch, yaw]` in meters and radians (scipy `"xyz"` Euler angles):
+
+```json
+"13222437": {
+  "pose": [0.0315, 0.0681, -0.1314, -0.3759, 0.0050, 3.1204],
+  "timestamp": 1789669300.29
+}
+```
+
+`tiptop-run` fails on startup if the wrist camera's serial has no entry.
+
+### Setting them
+
+Use `calibrate-wrist-cam` rather than editing the file by hand. It needs the robot (the NUC's DROID
+server and the shim) running:
+
+1. Fix the DROID ChArUco board to the table. The board size is set at the top of
+   `submodules/tiptop/tiptop/scripts/calibrate_wrist_cam.py` (14 × 9 squares, 20 mm checkers, 15 mm
+   markers); edit it if your board differs.
+2. Put the arm in Programming mode in Franka Desk and guide it so the board is centered in the wrist
+   camera's view, about 30–60 cm away. Then switch back to Execution mode.
+3. Run the calibration:
+
+   ```bash
+   cd submodules/tiptop
+   TIPTOP_CALIB_VIZ=1 DC_WORKSPACE=prpl pixi run calibrate-wrist-cam
+   ```
+
+   With `TIPTOP_CALIB_VIZ=1` it shows the camera feed and waits for `y` before moving. Without it, it runs
+   headless and starts moving the arm 3 seconds after launch. The arm sweeps around its current pose for
+   2–3 minutes, then the script writes the entry. It writes to the workspace file when `DC_WORKSPACE` is
+   set, otherwise to `calibration_info.json`. If the fit isn't accurate enough, it raises an error and
+   writes nothing.
+4. Check the result:
+
+   ```bash
+   pixi run viz-calibration
+   ```
+
+   The point cloud should line up with the robot model and the table in Rerun.
+
+Recalibrate whenever the wrist camera is bumped, remounted or swapped. A new unit has a new serial, so it
+needs its own entry. The calibration files are part of the tiptop submodule, so commit changes there and
+then update the submodule pointer in this repository.
 
 ## Pipeline
 
@@ -167,7 +260,7 @@ OPENPI_CONFIG_DIR=$PWD/configs uv run --project ../submodules/openpi python ../s
     policy:checkpoint --policy.config=place_toys_on_plate --policy.dir=checkpoints/place_toys_on_plate/my_run/19999
 ```
 
-On the robot side, stop the shim and bring up DROID's standard NUC stack. On the DROID control laptop, set
+On the robot side, stop the shim and leave DROID's server running (Setup step 4). On the DROID control laptop, set
 up openpi's DROID client as in
 [`examples/droid/README.md`](https://github.com/SamratSahoo/openpi/blob/c4b2b1bf507e1ddd894902b2771bc6b224fb1873/examples/droid/README.md)
 (step 2: install `packages/openpi-client` and copy `examples/droid/main.py` to `$DROID_ROOT/scripts/`),
